@@ -1,0 +1,121 @@
+<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Royal Casino VN</title>
+<style>
+:root{--g:#d4af37;--bg:#07140e}
+*{box-sizing:border-box}body{margin:0;font-family:Georgia,serif;color:#f5ecd0;background:radial-gradient(circle at 50% 0,#0f4a2c,var(--bg) 70%) fixed;min-height:100vh}
+header{display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:#000a;border-bottom:2px solid var(--g)}
+h1{margin:0;color:var(--g);letter-spacing:3px;text-shadow:0 0 12px #d4af3799}
+#coin{font-size:20px;color:var(--g);border:1px solid var(--g);border-radius:20px;padding:4px 14px}
+nav{display:flex;gap:8px;padding:12px 20px;flex-wrap:wrap}
+button{cursor:pointer;font:inherit;color:#1a1200;background:linear-gradient(#f3d77a,var(--g));border:0;border-radius:8px;padding:8px 16px;font-weight:bold}
+nav button{background:#0008;color:var(--g);border:1px solid var(--g)}nav button.on{background:var(--g);color:#000}
+.wrap{display:grid;grid-template-columns:1fr 300px;gap:16px;padding:0 20px 20px}
+@media(max-width:800px){.wrap{grid-template-columns:1fr}}
+.panel{background:#0b2a1ccc;border:2px solid var(--g);border-radius:14px;padding:16px;box-shadow:0 0 20px #000}
+.tab{display:none;text-align:center}.tab.on{display:block}
+.timer{font-size:48px;color:var(--g)}.sides{display:flex;gap:12px;justify-content:center;margin:12px 0}
+.side{font-size:22px;padding:18px 30px;display:flex;flex-direction:column;align-items:center}.side small{font-size:13px}
+.card{display:inline-block;background:#fff;color:#111;border-radius:6px;padding:10px 8px;margin:3px;min-width:40px;font-weight:bold}.card.r{color:#c00}
+#log{height:300px;overflow:auto;text-align:left;font-size:14px;background:#0006;padding:8px;border-radius:8px}
+input{padding:8px;border-radius:8px;border:1px solid var(--g);background:#000a;color:#fff;font:inherit}
+#auth{max-width:320px;margin:15vh auto;text-align:center}#auth input{display:block;width:100%;margin:8px 0}
+#toast{position:fixed;top:70px;right:20px;display:flex;flex-direction:column;gap:6px}#toast div{background:var(--g);color:#000;padding:8px 14px;border-radius:8px}
+.q button{display:block;width:100%;margin:6px 0}
+.sides{flex-wrap:wrap}.pl{margin:8px 0;padding:8px;border:1px solid #d4af3755;border-radius:8px}.pl.turn{border-color:#fff;box-shadow:0 0 10px var(--g)}.card.sel{transform:translateY(-12px);outline:2px solid var(--g)}.big{font-size:32px;color:var(--g);letter-spacing:6px}select{padding:8px;border-radius:8px}
+</style></head><body>
+<div id="auth" class="panel"><h1>ROYAL CASINO</h1><input id="u" placeholder="Tên đăng nhập"><input id="p" type="password" placeholder="Mật khẩu"><button onclick="login(0)">Đăng nhập</button> <button onclick="login(1)">Đăng ký (+1000 xu)</button><p id="e" style="color:#f77"></p></div>
+<div id="app" hidden>
+<header><h1>♠ ROYAL CASINO ♥</h1><div>Cược: <input id="amt" type="number" value="100" min="10" style="width:90px"> <span id="coin">0</span></div></header>
+<nav id="nav"></nav>
+<div class="wrap"><div class="panel">
+ <div class="tab" id="tx"></div><div class="tab" id="lh"></div>
+ <div class="tab" id="bj"><h2>Blackjack</h2><div id="bjb"></div><p id="bjm"></p><button onclick="bj('deal')">Chia bài</button> <button onclick="bj('hit')">Rút</button> <button onclick="bj('stand')">Dừng</button></div>
+ <div class="tab" id="bc"></div>
+ <div class="tab" id="room"><div id="rl"><h2>Phòng chơi</h2><select id="rg"><option value="xd">Xì dách miền Tây (bạn làm cái)</option><option value="co">Co-op 2D: dính dây vượt chướng ngại (2-4)</option><option value="pk">Hold’em Poker (2-6, cược = blind lớn, mua chip 20x)</option><option value="tl">Tiến lên (2-4 người)</option></select> <select id="rlv"><option value="0">Co-op màn 1: Đồng bằng</option><option value="1">Màn 2: Rừng gai</option><option value="2">Màn 3: Cầu treo vực thẳm</option></select> <input id="rb" type="number" value="100" style="width:90px"> <button onclick="sock.emit('room:create',{game:$('#rg').value,bet:+$('#rb').value,lvl:+$('#rlv').value})">Tạo phòng</button><hr><input id="rc" placeholder="MÃ" maxlength="4" style="width:100px;text-transform:uppercase"> <button onclick="sock.emit('room:join',$('#rc').value)">Vào phòng</button></div><div id="rv" hidden></div></div>
+ <div class="tab" id="gold"><h2>⛏️ Đào vàng</h2><p>Phí 100 xu / 45 giây. Nhấn <b>Space</b> hoặc chạm vào màn hình để thả móc. Vàng to nặng nên kéo chậm, kim cương nhỏ mà giá trị cao.</p><button id="gs" onclick="goldStart()">Bắt đầu (−100 xu)</button><br><canvas id="gc" width="600" height="400" style="max-width:100%;margin-top:8px;border:2px solid var(--g);border-radius:8px;background:#3b2a1a"></canvas></div>
+ <div class="tab" id="earn"><h2>Kiếm xu</h2><button onclick="quiz('math')">📐 Toán 10-12 (+60)</button> <button onclick="quiz('en')">🇬🇧 Tiếng Anh (+40)</button><div id="qz" class="q"></div></div>
+</div><div class="panel"><b>💬 Chat phòng</b><div id="log"></div><input id="msg" placeholder="Nhập tin nhắn…" style="width:100%;margin-top:6px"></div></div></div>
+<div id="toast"></div>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const $=s=>document.querySelector(s);let LV,CO,G,keys={l:0,r:0,j:0},tok,sock,me,cur=null,sel=new Set(),tab='tx';const cr=()=>tab=='room'&&cur?cur.code:tab;
+const F=(c,tg)=>`<span class="card ${c.s%2?'r':''} ${tg&&sel.has(c.id)?'sel':''}" ${tg?`onclick="tg(${c.id})"`:''}>${['','A',2,3,4,5,6,7,8,9,10,'J','Q','K'][c.r]}${'♠♥♣♦'[c.s]}</span>`;
+const TABS={room:'🏠 Phòng (nhập mã)',tx:'🎲 Tài xỉu',lh:'🐉 Long hổ',bc:'🦀 Bầu cua',bj:'🃏 Blackjack',gold:'⛏️ Đào vàng',earn:'🪙 Kiếm xu'};
+const SIDES={tx:{tai:'TÀI',xiu:'XỈU'},lh:{long:'RỒNG',ho:'HỔ (x1:9 hòa)',hoa:'HÒA x9'}};
+SIDES.bc={bau:'🎃 Bầu',cua:'🦀 Cua',tom:'🦐 Tôm',ca:'🐟 Cá',ga:'🐓 Gà',nai:'🦌 Nai'};SIDES.lh={long:'RỒNG',hoa:'HÒA x9',ho:'HỔ'};
+const toast=t=>{const d=document.createElement('div');d.textContent=t;$('#toast').append(d);setTimeout(()=>d.remove(),3000)};
+const H=(o)=>({'Content-Type':'application/json',Authorization:'Bearer '+tok});
+async function login(reg){const r=await fetch('/api/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:$('#u').value,password:$('#p').value,reg})});const d=await r.json();if(d.err)return $('#e').textContent=d.err;tok=d.token;me=d.username;start()}
+function show(t){tab=t;document.querySelectorAll('.tab').forEach(e=>e.classList.toggle('on',e.id==t));document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.t==t));$('#log').innerHTML=''}
+function start(){
+ $('#auth').hidden=true;$('#app').hidden=false;
+ for(const t in TABS){const b=document.createElement('button');b.textContent=TABS[t];b.dataset.t=t;b.onclick=()=>show(t);$('#nav').append(b)}
+ for(const g in SIDES)$('#'+g).innerHTML=`<h2>${TABS[g]}</h2><div class="timer" id="t-${g}">20</div><div class="sides">${Object.entries(SIDES[g]).map(([k,v])=>`<button class="side" onclick="sock.emit('bet',{game:'${g}',side:'${k}',amt:+$('#amt').value})">${v}<small id="o-${g}-${k}">0</small></button>`).join('')}</div><p id="l-${g}"></p><p id="h-${g}" style="opacity:.7"></p>`;
+ show('room');
+ sock=io({auth:{token:tok}});
+ sock.on('bal',v=>$('#coin').textContent='🪙 '+v.toLocaleString());
+ sock.on('toast',toast);
+ sock.on('co:lv',v=>LV=v);sock.on('co',s=>{CO=s;draw()});
+ sock.on('room',v=>{if((v&&v.code)!=(cur&&cur.code))$('#log').innerHTML='';cur=v;sel.clear();renderRoom()});
+ sock.on('round',({game,s})=>{$('#t-'+game).textContent=s.left;for(const k in s.tot)$(`#o-${game}-${k}`).textContent=s.tot[k];$('#l-'+game).textContent='Kết quả: '+(s.last?s.last.label:'-');$('#h-'+game).textContent=s.hist.join(' · ')});
+ sock.on('chat',m=>{if(m.room!=cr())return;const d=document.createElement('div');const b=document.createElement('b');b.textContent=m.u+': ';d.append(b,m.msg);$('#log').append(d);$('#log').scrollTop=1e9});
+ sock.on('bj',s=>{const f=c=>`<span class="card ${c.s%2?'r':''}">${'?A23456789TJQK'[c.r]=='T'?'10':'?A23456789TJQK'[c.r]}${'♠♥♣♦'[c.s]}</span>`;
+  $('#bjb').innerHTML=`<p>Nhà cái ${s.dv??''}<br>${s.d.map(f).join('')}${s.done?'':'<span class=card>?</span>'}</p><p>Bạn ${s.pv}<br>${s.p.map(f).join('')}</p>`;$('#bjm').textContent=s.msg});
+ $('#msg').onkeydown=e=>{if(e.key=='Enter'){sock.emit('chat',{room:cr(),msg:e.target.value});e.target.value=''}};
+}
+const bj=a=>a=='deal'?sock.emit('bj:deal',+$('#amt').value):sock.emit('bj:'+a);
+async function quiz(t){const q=await(await fetch('/api/quiz?type='+t,{headers:H()})).json();const z=$('#qz');z.innerHTML='';const h=document.createElement('p');h.textContent=q.q;z.append(h);
+ q.opts.forEach(o=>{const b=document.createElement('button');b.textContent=o;b.onclick=async()=>{const r=await(await fetch('/api/quiz/answer',{method:'POST',headers:H(),body:JSON.stringify({a:o})})).json();z.innerHTML=r.ok?`✅ Đúng! +${r.reward} xu`:`❌ Sai. Đáp án: ${r.ans}`};z.append(b)})}
+
+const tg=i=>{sel.has(i)?sel.delete(i):sel.add(i);renderRoom()};
+const E=(a,...x)=>sock.emit(a,...x);
+function renderRoom(){
+ $('#rl').hidden=!!cur;$('#rv').hidden=!cur;if(!cur)return;
+ const xd=cur.game=='xd',mine=cur.turn==me,host=cur.host==me;
+ let o=`<h2>${{xd:'Xì dách',tl:'Tiến lên',co:'Co-op 2D',pk:'Hold’em'}[cur.game]} • ${cur.game=='pk'?'blind lớn':'cược'} ${cur.bet}</h2><div class="big">${cur.code}</div><p>${cur.msg||''}</p>`;
+ o+=cur.players.map(p=>`<div class="pl ${p.u==cur.turn?'turn':''}"><b>${p.u}${p.u==cur.host?' 👑':''}</b>${cur.game=='pk'?` 🪙${p.stack||0}${p.bet?' • cược '+p.bet:''}${p.fold?' (úp)':''}${p.allin?' ALL-IN':''}${p.u==cur.dealer?' Ⓓ':''}`:''}<br>${p.h?p.h.map(c=>F(c,cur.game=='tl'&&p.u==me&&cur.phase=='play')).join(''):(p.n?'🂠×'+p.n:'')}</div>`).join('');
+ if(cur.game=='pk')o+=`<p>Bài chung: ${(cur.board||[]).map(c=>F(c)).join('')||'—'} • Pot: ${cur.pot}</p>`;
+ if(cur.table)o+=`<p>Bàn (${cur.table.u}): ${cur.table.cards.map(c=>F(c)).join('')}</p>`;
+ if(cur.game=='co'&&cur.phase=='play')o+=`<canvas id="cv" width="640" height="360" style="max-width:100%;border:2px solid var(--g);border-radius:8px"></canvas><div>${[['l','◀'],['j','⤒ Nhảy'],['r','▶']].map(([k,t])=>`<button style="font-size:20px;margin:4px" onpointerdown="pb('${k}',1)" onpointerup="pb('${k}',0)" onpointerleave="pb('${k}',0)">${t}</button>`).join('')}</div>`;
+ if(cur.phase!='play'&&host)o+=`<button onclick="E('room:start')">${cur.phase=='end'?'Chơi lại':'Bắt đầu'}</button> `;
+ if(cur.game=='pk'&&cur.phase=='play'&&mine){const m=cur.players.find(p=>p.u==me),tc=cur.cur-m.bet;
+  o+=`<button onclick="E('p:fold')">Úp bài</button> <button onclick="E('p:call')">${tc>0?'Theo '+Math.min(tc,m.stack):'Xem bài'}</button> <input id="ra" type="number" value="${cur.cur+cur.mr}" style="width:90px"> <button onclick="E('p:raise',+$('#ra').value)">Tố tới</button> <button onclick="E('p:raise',1e9)">All-in</button> `}
+ if(cur.phase=='play'&&mine&&cur.game!='pk'&&cur.game!='co')o+=xd?`<button onclick="E('x:hit')">Rút</button> <button onclick="E('x:stand')">Dừng</button> `:`<button onclick="E('t:play',[...sel])">Đánh</button> <button onclick="E('t:pass')">Bỏ lượt</button> `;
+ o+=`<button onclick="E('room:leave')" style="background:#a33;color:#fff">Rời phòng</button>`;
+ $('#rv').innerHTML=o;draw()}
+
+function draw(){const c=$('#cv');if(!c||!LV||!CO)return;const x=c.getContext('2d'),P=CO.ps,cx=P.reduce((a,p)=>a+p[1],0)/P.length-320;
+ x.fillStyle='#102a3a';x.fillRect(0,0,640,360);
+ x.fillStyle='#2e7d32';LV.g.forEach(([a,b])=>x.fillRect(a-cx,300,b-a,60));
+ x.fillStyle='#8d6e63';LV.pl.forEach(([a,b,y])=>x.fillRect(a-cx,y,b-a,8));
+ x.fillStyle='#e53935';LV.sp.forEach(s=>{x.beginPath();x.moveTo(s-cx,300);x.lineTo(s+15-cx,280);x.lineTo(s+30-cx,300);x.fill()});
+ x.fillStyle='#ffd700';x.fillRect(LV.goal-cx,220,6,80);
+ x.strokeStyle='#fff';x.lineWidth=2;x.beginPath();P.forEach((p,i)=>i?x.lineTo(p[1]-cx,p[2]-14):x.moveTo(p[1]-cx,p[2]-14));x.stroke();
+ const col=['#42a5f5','#ef5350','#66bb6a','#ffca28'];x.font='12px sans-serif';
+ P.forEach((p,i)=>{x.fillStyle=col[i];x.fillRect(p[1]-9-cx,p[2]-28,18,28);x.fillStyle='#fff';x.fillText(p[0],p[1]-20-cx,p[2]-34)});
+ x.fillText('⏱ '+(CO.t|0)+'s',10,20)}
+const KM={ArrowLeft:'l',a:'l',ArrowRight:'r',d:'r',ArrowUp:'j',w:'j',' ':'j'};
+const pb=(k,v)=>{if(keys[k]!=v){keys[k]=v;sock.emit('co:in',keys)}};
+addEventListener('keydown',e=>{if(e.target.tagName=='INPUT')return;
+ if(e.code=='Space'&&tab=='gold'&&G&&G.st=='swing'){e.preventDefault();G.st='out'}
+ const k=KM[e.key];if(k&&cur&&cur.game=='co'&&cur.phase=='play'){e.preventDefault();pb(k,1)}});
+addEventListener('keyup',e=>{const k=KM[e.key];if(k&&cur&&cur.game=='co')pb(k,0)});
+// Đào vàng
+async function goldStart(){const r=await(await fetch('/api/gold/start',{method:'POST',headers:H()})).json();if(r.err)return toast(r.err);
+ G={items:r.items,got:[],ang:0,len:0,st:'swing',t0:performance.now(),sc:0,ph:0};$('#gs').disabled=true;$('#gc').onclick=()=>{if(G&&G.st=='swing')G.st='out'};requestAnimationFrame(gl)}
+function gl(now){if(!G)return;const x=$('#gc').getContext('2d'),dt=Math.min(.05,(now-(G.l||now))/1000);G.l=now;const el=(now-G.t0)/1000,O=[300,40];
+ if(G.st=='swing'){G.ph+=dt*1.6;G.ang=Math.sin(G.ph)*1.2}
+ else{const dx=Math.sin(G.ang),dy=Math.cos(G.ang);
+  if(G.st=='out'){G.len+=260*dt;const hx=O[0]+dx*G.len,hy=O[1]+dy*G.len,it=G.items.find(i=>!i.gone&&Math.hypot(i.x-hx,i.y-hy)<i.r+4);
+   if(it){G.hit=it;G.st='back'}else if(hx<5||hx>595||hy>395)G.st='back'}
+  else{G.len-=(G.hit?260*Math.max(.35,1-G.hit.r/45):300)*dt;
+   if(G.len<=0){G.len=0;if(G.hit){G.hit.gone=1;G.got.push(G.hit.id);G.sc+=G.hit.v;G.hit=null}G.st='swing'}}}
+ const hx=O[0]+Math.sin(G.ang)*G.len,hy=O[1]+Math.cos(G.ang)*G.len;
+ x.fillStyle='#3b2a1a';x.fillRect(0,0,600,400);x.fillStyle='#6d4c41';x.fillRect(0,0,600,40);
+ const CL={g:'#ffd700',G:'#ffb300',s:'#888',d:'#4fc3f7'};
+ G.items.forEach(i=>{if(i.gone)return;if(i==G.hit){i.x=hx;i.y=hy}x.fillStyle=CL[i.t];x.beginPath();x.arc(i.x,i.y,i.r,0,7);x.fill()});
+ x.strokeStyle='#ddd';x.lineWidth=2;x.beginPath();x.moveTo(...O);x.lineTo(hx,hy);x.stroke();
+ x.fillStyle='#fff';x.font='16px sans-serif';x.fillText(`⏱ ${Math.max(0,45-el)|0}s   🪙 ${G.sc}`,10,25);
+ if(el>=45&&G.st=='swing')return goldEnd();requestAnimationFrame(gl)}
+async function goldEnd(){const ids=G.got;G=null;$('#gs').disabled=false;
+ const r=await(await fetch('/api/gold/end',{method:'POST',headers:H(),body:JSON.stringify({ids})})).json();toast(r.err||`Thu được +${r.gain} xu`)}
+</script></body></html>

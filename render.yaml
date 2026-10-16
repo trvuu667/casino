@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: casino-vn
+    runtime: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: SECRET
+        generateValue: true
