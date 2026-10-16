@@ -74,7 +74,7 @@ app.post('/api/gold/start',(req,res)=>{
 app.post('/api/gold/end',(req,res)=>{
   const u=auth(req),g=golds.get(u);if(!u||!g)return res.json({gain:0});golds.delete(u);
   const el=(Date.now()-g.t)/1000,ids=[...new Set(req.body.ids||[])],its=ids.map(i=>g.items[i]).filter(Boolean);
-  const need=its.reduce((a,o)=>a+2*Math.max(0,Math.hypot(o.x-300,o.y-40)-o.r)/260,0);
+  const need=its.reduce((a,o)=>a+2*Math.max(0,Math.hypot(o.x-300,o.y-40)-o.r-40)/260,0);
   if(el>75||need>el+1)return res.json({gain:0,err:'Kết quả không hợp lệ'});
   const gain=its.reduce((a,o)=>a+o.v,0);add(u,gain);res.json({gain,coins:bal.get(u)});
 });
@@ -86,7 +86,7 @@ function round(key,sides,play){
   s.pub=()=>({game:key,s:{left:s.left,last:s.last,hist:s.hist.slice(-15),tot:Object.fromEntries(sides.map(x=>[x,Object.values(s.bets[x]).reduce((a,b)=>a+b,0)]))}});
   setInterval(()=>{
     if(--s.left<=0){
-      const r=play();s.last=r;s.hist.push(r.label);
+      const r=play();r.id=(s.n=(s.n||0)+1);s.last=r;s.hist.push(r.label);
       for(const x of sides)for(const[u,a]of Object.entries(s.bets[x])){const m=r.pay[x]||0;if(m)add(u,a*m);
         io.to('u:'+u).emit('toast',m>=1?`${key}: thắng +${Math.floor(a*(m-1))}`:`${key}: thua −${a}`)}
       sides.forEach(x=>s.bets[x]={});s.left=20;
@@ -102,7 +102,7 @@ round('tx',['tai','xiu'],()=>{
 round('lh',['long','ho','hoa'],()=>{
   const a=1+Math.floor(Math.random()*13),b=1+Math.floor(Math.random()*13);
   const w=a>b?'long':a<b?'ho':'hoa';
-  return{label:`${a} vs ${b} ${w==='long'?'RỒNG':w==='ho'?'HỔ':'HÒA'}`,cards:[a,b],pay:w==='hoa'?{hoa:9,long:.5,ho:.5}:{[w]:2}};
+  return{label:`${a} vs ${b} ${w==='long'?'RỒNG':w==='ho'?'HỔ':'HÒA'}`,cards:[{r:a,s:Math.floor(Math.random()*4)},{r:b,s:Math.floor(Math.random()*4)}],pay:w==='hoa'?{hoa:9,long:.5,ho:.5}:{[w]:2}};
 });
 
 // ===== Blackjack =====
@@ -127,14 +127,14 @@ round('bc',BC,()=>{const d=[0,0,0].map(()=>Math.floor(Math.random()*6)),pay={};
 
 // ===== Co-op 2D: dính dây vượt chướng ngại (server mô phỏng 30Hz) =====
 const LEVELS=[
- {name:'Đồng bằng',gy:300,goal:3150,par:60,lim:150,g:[[0,500],[580,1000],[1100,1300],[1400,2000],[2100,2500],[2600,3250]],sp:[300,780,1150,1600,1750,2250,2800],pl:[[1450,1520,250],[2300,2380,240]]},
- {name:'Rừng gai',gy:300,goal:2700,par:55,lim:150,g:[[0,400],[470,800],[880,1100],[1180,1500],[1580,1900],[1980,2300],[2380,2800]],sp:[250,600,950,1250,1650,1700,2050,2500,2600],pl:[[1700,1790,240],[2050,2140,240]]},
- {name:'Cầu treo vực thẳm',gy:300,goal:2950,par:75,lim:180,g:[[0,320],[2460,3050]],sp:[2600],pl:[[380,470,270],[540,630,230],[700,790,270],[860,950,230],[1020,1110,190],[1180,1270,230],[1340,1430,270],[1500,1590,230],[1660,1750,190],[1820,1910,230],[1980,2070,270],[2140,2230,230],[2300,2390,270]]}
+ {name:'Đồng bằng',gy:300,cp:[{x:1240,y:300},{x:2400,y:300}],goal:3150,par:60,lim:150,g:[[0,500],[580,1000],[1100,1300],[1400,2000],[2100,2500],[2600,3250]],sp:[300,780,1150,1600,1750,2250,2800],pl:[[1450,1520,250],[2300,2380,240]]},
+ {name:'Rừng gai',gy:300,cp:[{x:1040,y:300},{x:2200,y:300}],goal:2700,par:55,lim:150,g:[[0,400],[470,800],[880,1100],[1180,1500],[1580,1900],[1980,2300],[2380,2800]],sp:[250,600,950,1250,1650,1700,2050,2500,2600],pl:[[1700,1790,240],[2050,2140,240]]},
+ {name:'Cầu treo vực thẳm',gy:300,cp:[{x:1225,y:230},{x:2550,y:300}],goal:2950,par:75,lim:180,g:[[0,320],[2460,3050]],sp:[2600],pl:[[380,470,270],[540,630,230],[700,790,270],[860,950,230],[1020,1110,190],[1180,1270,230],[1340,1430,270],[1500,1590,230],[1660,1750,190],[1820,1910,230],[1980,2070,270],[2140,2230,230],[2300,2390,270]]}
 ];
 function coStart(r){
   const L=LEVELS[r.lvl||0];r.players.forEach(p=>add(p.u,-r.bet));
-  r.sim={t0:Date.now(),L,surf:L.g.map(([a,b])=>[a,b,L.gy]).concat(L.pl),ps:r.players.map((p,i)=>({u:p.u,x:40+i*30,y:L.gy,vx:0,vy:0,on:true,d:0,in:{},safe:{x:40,y:L.gy}}))};
-  r.msg=`Màn: ${L.name}. ← → di chuyển, Space/↑ nhảy. Dây chỉ dài 150px!`;
+  r.sim={t0:Date.now(),L,cp:-1,surf:L.g.map(([a,b])=>[a,b,L.gy]).concat(L.pl),ps:r.players.map((p,i)=>({u:p.u,x:40+i*30,y:L.gy,vx:0,vy:0,on:true,d:0,in:{}}))};
+  r.msg=`Màn: ${L.name}. ← → di chuyển, Space/↑ nhảy. Dây chỉ dài 150px! Chết sẽ hồi sinh ở cờ checkpoint 🚩`;
   io.to('r:'+r.code).emit('co:lv',L);r.timer=setInterval(()=>coTick(r),33)}
 function coTick(r){
   const dt=1/30,S=r.sim,L=S.L,ps=S.ps,t=(Date.now()-S.t0)/1000;
@@ -143,11 +143,12 @@ function coTick(r){
     if(p.in.j&&p.on){p.vy=-520}
     p.vy+=1400*dt;const py=p.y;p.x=Math.max(10,p.x+p.vx*dt);p.y+=p.vy*dt;p.on=false;
     if(p.vy>=0)for(const[a,b,y]of S.surf)if(p.x+9>a&&p.x-9<b&&py<=y+1&&p.y>=y){p.y=y;p.vy=0;p.on=true;break}
-    if(p.on&&S.surf.some(([a,b,y])=>y===p.y&&p.x-30>a&&p.x+30<b)&&!L.sp.some(s=>Math.abs(s+15-p.x)<70))p.safe={x:p.x,y:p.y};
+    if(p.on)L.cp.forEach((c,k)=>{if(k>S.cp&&p.x>=c.x)S.cp=k});
     if(p.y>460||L.sp.some(s=>p.x+9>s&&p.x-9<s+30&&p.y>=280&&p.y<=308)){
-      const o=ps.filter(q=>q!==p).sort((a,b)=>b.safe.x-a.safe.x)[0]||p;
-      p.d++;p.x=o.safe.x;p.y=o.safe.y;p.vx=p.vy=0}}
+      const c=S.cp>=0?L.cp[S.cp]:null,k=ps.indexOf(p);
+      p.free=true;p.d++;p.x=c?c.x-30+k*20:40+k*30;p.y=c?c.y:L.gy;p.vx=p.vy=0}}
   for(let i=0;i<ps.length-1;i++){const a=ps[i],b=ps[i+1],dx=b.x-a.x;
+    if(a.free||b.free){if(Math.abs(dx)<=150)a.free=b.free=false;continue}
     if(Math.abs(dx)>150){const e=(Math.abs(dx)-150)/2*Math.sign(dx);a.x+=e;b.x-=e}}
   const win=ps.every(p=>p.x>=L.goal);
   if(win||t>L.lim){
@@ -156,7 +157,7 @@ function coTick(r){
     if(win){ps.forEach(p=>add(p.u,r.bet*m));r.msg=`Về đích sau ${Math.round(t)}s! Thưởng x${m} • ${ps.reduce((a,p)=>a+p.d,0)} lần ngã`}
     else r.msg='Hết giờ! Cả đội mất cược';
     push(r)}
-  io.to('r:'+r.code).emit('co',{t,ps:ps.map(p=>[p.u,p.x,p.y,p.d])})}
+  io.to('r:'+r.code).emit('co',{t,cp:S.cp,ps:ps.map(p=>[p.u,p.x,p.y,p.d])})}
 
 // ===== Poker (Texas Hold'em) =====
 const HN=['Bài cao','Một đôi','Hai đôi','Sám cô','Sảnh','Thùng','Cù lũ','Tứ quý','Thùng phá sảnh'];
